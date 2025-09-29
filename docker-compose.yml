@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: expense_vista_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-expense_vista_db}
+    ports:
+      - "5433:5432"              # host:container (host 5433 to avoid clashing with local 5432)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-expense_vista_db}"]
+      interval: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend        # backend submodule
+      target: dev             # Dockerfile defines "AS dev"
+    container_name: expense_vista_api
+    volumes:
+      - ./backend:/app          # hot-reload in dev; remove for production
+    env_file:
+      - ./backend/.env          # should include DATABASE_URL pointing to db:5432
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    # Optional: if your Dockerfile CMD isn’t set for reload, uncomment:
+    # command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/ping || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend       # frontend submodule
+      # Tag the built image (optional but nice)
+      # image will be applied below; compose allows image+build to tag output
+      args:
+        # Build-time Vite env
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
+    image: expense-vista-frontend:latest
+    container_name: expense_vista_web
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "5173:80"               # host 5173 -> container 80 (nginx)
+    # No runtime envs needed for static bundle
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
