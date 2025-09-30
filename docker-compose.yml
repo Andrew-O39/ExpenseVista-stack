@@ -57,7 +57,7 @@ services:
       api:
         condition: service_started
     ports:
-      - "5173:80"               # host 5173 -> container 80 (nginx)
+      - "5173:80"            # host 5173 -> container 80 (nginx)
     # No runtime envs needed for static bundle
     restart: unless-stopped
 
