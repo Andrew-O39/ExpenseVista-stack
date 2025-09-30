@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-expense_vista_db}
     ports:
-      - "5433:5432"              # host:container (host 5433 to avoid clashing with local 5432)
+      - "5433:5432"  # host 5433 → container 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,22 +21,21 @@ services:
 
   api:
     build:
-      context: ./backend        # backend submodule
-      target: dev             # Dockerfile defines "AS dev"
+      context: ./backend
+      target: dev
     container_name: expense_vista_api
     volumes:
-      - ./backend:/app          # hot-reload in dev; remove for production
+      - ./backend:/app
     env_file:
-      - ./backend/.env          # should include DATABASE_URL pointing to db:5432
+      - ./backend/.env
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
-    # Optional: if your Dockerfile CMD isn’t set for reload, uncomment:
-    # command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    # command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload  # if your dev stage doesn't set it
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/ping || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ping || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -45,11 +44,8 @@ services:
 
   web:
     build:
-      context: ./frontend       # frontend submodule
-      # Tag the built image (optional but nice)
-      # image will be applied below; compose allows image+build to tag output
+      context: ./frontend
       args:
-        # Build-time Vite env
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
     image: expense-vista-frontend:latest
     container_name: expense_vista_web
@@ -57,8 +53,7 @@ services:
       api:
         condition: service_started
     ports:
-      - "5173:80"            # host 5173 -> container 80 (nginx)
-    # No runtime envs needed for static bundle
+      - "5173:80"   # host 5173 → container 80 (nginx/static)
     restart: unless-stopped
 
 volumes:
