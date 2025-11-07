@@ -1,0 +1,3 @@
+app.expensevista.com {
+    reverse_proxy web:80
+}
