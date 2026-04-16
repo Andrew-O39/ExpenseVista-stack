@@ -1,0 +1,4 @@
+
+backend/.env*
+frontend/.env*
+_tmp_backup/
